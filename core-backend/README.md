@@ -48,47 +48,29 @@ uvicorn app.main:app --reload
 - API: http://localhost:8000  
 - Docs: http://localhost:8000/schema/scalar  
 
-## Course API (frontend contract)
+## Course API (frontend contract — SPECS.md)
+
+### Create course + chapter list
+
+`POST /courses`
+
+```json
+{ "topic": "How neural networks work", "level": "beginner", "language": "en" }
+```
+
+→ `{ id, topic, level, language, created_at, chapters: [{ id, index, title, description, status }] }`
+
+`status` starts as `not_generated` for every chapter.
+
+### Get course
+
+`GET /courses/{course_id}`
 
 ### Quick prompts
 
 `GET /courses/suggestions?language=en|my`
 
-### 1) Generate outline
-
-`POST /courses/outline`
-
-```json
-{
-  "topic": "How neural networks work",
-  "level": "beginner",
-  "language": "en"
-}
-```
-
-→ `{ title, topic, level, language, chapters: [{ index, title, summary }] }`
-
-### 2) Generate module (after user picks a chapter)
-
-`POST /courses/modules/generate`
-
-```json
-{
-  "topic": "How neural networks work",
-  "level": "beginner",
-  "language": "en",
-  "course_title": "…",
-  "chapter": { "index": 1, "title": "…", "summary": "…" }
-}
-```
-
-→ `{ title, level, language, sections: ["…"], interactive: { type: "quiz"|"multiple_choice"|"flashcards", … } }`
-
-Interactive shapes:
-
-- `quiz`: `instruction`, `expected_answer`, optional `hint`
-- `multiple_choice`: `instruction`, `options[]`, `correct_index`
-- `flashcards`: `cards: [{ front, back }]`
+Chapter content generate / edit / quiz evaluate — next.
 
 ## Auth (future-facing)
 
