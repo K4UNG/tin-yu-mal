@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     cursor_api_key: SecretStr | None = None
     cursor_model: str = "composer-2.5"
     cursor_workspace: str = "/tmp/tin-yu-mal-cursor"
+    # Allow Cursor built-in webSearch + webFetch while generating courses
+    cursor_web_tools: bool = True
 
     # MinIO (S3-compatible uploads)
     minio_endpoint: str = "localhost:9000"

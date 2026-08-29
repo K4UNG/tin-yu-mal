@@ -25,7 +25,7 @@ Hackathon MVP: **AI course outline + module content** (Burmese/English) with fix
 - Litestar + JWT (optional for courses)
 - SQLAlchemy async + Postgres
 - SAQ + Redis
-- **Cursor SDK** (`AsyncAgent.prompt`, `tools=[]`) for outline/module JSON
+- **Cursor SDK** (`AsyncAgent.prompt`; `webSearch`/`webFetch` for course gen) for outline/module JSON
 - Scalar OpenAPI UI
 
 ## Quick start
