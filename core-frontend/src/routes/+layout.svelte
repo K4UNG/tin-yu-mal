@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
 	import { isUnauthorized } from '$lib/api/client';
+	import AppShell from '$lib/components/AppShell.svelte';
 	import '../app.css';
 
 	let { children } = $props();
@@ -27,12 +28,6 @@
 
 <QueryClientProvider client={queryClient}>
 	<div class="app">
-		<header class="topbar">
-			<a class="logo" href="/">
-				<span class="logo-mark" aria-hidden="true"><i class="b"></i><i class="r"></i><i class="y"></i><i class="g"></i></span>
-				<span class="logo-word">tin-yu-mal</span>
-			</a>
-		</header>
-		{@render children()}
+		<AppShell>{@render children()}</AppShell>
 	</div>
 </QueryClientProvider>

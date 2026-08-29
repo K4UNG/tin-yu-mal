@@ -11,6 +11,12 @@ export type LoginRequest = {
 	password: string;
 };
 
+export type SignupRequest = {
+	email: string;
+	name: string;
+	password: string;
+};
+
 export type TokenResponse = {
 	access_token: string;
 	token_type: string;
@@ -30,6 +36,12 @@ export const authKeys = {
 
 export async function login(body: LoginRequest): Promise<TokenResponse> {
 	const { data } = await api.post<TokenResponse>('/auth/login', body);
+	setAccessToken(data.access_token);
+	return data;
+}
+
+export async function signup(body: SignupRequest): Promise<TokenResponse> {
+	const { data } = await api.post<TokenResponse>('/auth/signup', body);
 	setAccessToken(data.access_token);
 	return data;
 }
@@ -54,6 +66,12 @@ export function meQueryOptions() {
 export function loginMutationOptions() {
 	return mutationOptions({
 		mutationFn: login
+	});
+}
+
+export function signupMutationOptions() {
+	return mutationOptions({
+		mutationFn: signup
 	});
 }
 

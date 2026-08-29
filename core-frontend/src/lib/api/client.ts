@@ -18,7 +18,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
 	(response) => response,
 	(error: AxiosError) => {
-		if (isUnauthorized(error) && !isLoginRequest(error)) {
+		if (isUnauthorized(error) && !isPublicAuthRequest(error)) {
 			clearAccessToken();
 		}
 		return Promise.reject(error);
@@ -32,13 +32,11 @@ export function isUnauthorized(error: unknown): boolean {
 export function getApiErrorMessage(error: unknown): string {
 	if (axios.isAxiosError(error)) {
 		const data = error.response?.data;
-		if (
-			data !== null &&
-			typeof data === 'object' &&
-			'detail' in data &&
-			typeof data.detail === 'string'
-		) {
-			return data.detail;
+		if (data !== null && typeof data === 'object' && 'detail' in data) {
+			if (typeof data.detail === 'string') return data.detail;
+			if (Array.isArray(data.detail) && data.detail[0]?.msg) {
+				return String(data.detail[0].msg);
+			}
 		}
 		return error.message;
 	}
@@ -46,7 +44,7 @@ export function getApiErrorMessage(error: unknown): string {
 	return 'Request failed';
 }
 
-function isLoginRequest(error: AxiosError): boolean {
+function isPublicAuthRequest(error: AxiosError): boolean {
 	const url = error.config?.url ?? '';
-	return url.includes('/auth/login');
+	return url.includes('/auth/login') || url.includes('/auth/signup');
 }

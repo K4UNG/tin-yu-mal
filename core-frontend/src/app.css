@@ -102,11 +102,42 @@ a {
 	z-index: 20;
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	height: var(--header-h);
 	padding: 0 var(--space-page);
 	background: color-mix(in srgb, var(--surface) 88%, transparent);
 	backdrop-filter: saturate(1.2) blur(12px);
 	border-bottom: 1px solid var(--line);
+}
+
+.topbar-end {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+.who {
+	max-width: 28ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--ink-2);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.text-btn {
+	border: 0;
+	padding: 0;
+	background: transparent;
+	color: var(--blue);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.text-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
 }
 
 .logo {
@@ -723,6 +754,100 @@ a {
 .muted {
 	color: var(--ink-3);
 	font-size: 13px;
+}
+
+.auth-page {
+	min-height: calc(100dvh - var(--header-h));
+	display: grid;
+	place-items: center;
+	padding: 32px var(--space-page) 48px;
+}
+
+.auth-card {
+	width: min(400px, 100%);
+	padding: 28px 28px 24px;
+}
+
+.auth-card h1 {
+	margin: 0 0 6px;
+	font-size: 24px;
+	font-weight: 700;
+	letter-spacing: -0.03em;
+}
+
+.auth-card > .muted {
+	margin: 0 0 20px;
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 14px;
+}
+
+.field span {
+	color: var(--ink-2);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.field input {
+	height: 42px;
+	padding: 0 14px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-md);
+	background: #f8f9fb;
+	outline: none;
+}
+
+.field input:focus {
+	border-color: var(--blue);
+	background: var(--surface);
+	box-shadow: 0 0 0 3px var(--blue-soft);
+}
+
+.btn-primary {
+	width: 100%;
+	height: 42px;
+	margin-top: 4px;
+	border: 0;
+	border-radius: var(--radius-md);
+	background: var(--blue);
+	color: #fff;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+	background: #1558c0;
+}
+
+.btn-primary:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.auth-error {
+	margin: 0 0 14px;
+	padding: 10px 12px;
+	border-radius: var(--radius-sm);
+	background: var(--red-soft);
+	color: var(--red);
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.auth-switch {
+	margin: 18px 0 0;
+	text-align: center;
+	color: var(--ink-2);
+	font-size: 13px;
+}
+
+.auth-switch a {
+	color: var(--blue);
+	font-weight: 600;
 }
 
 .missing {

@@ -3,7 +3,8 @@ import {
 	authKeys,
 	loginMutationOptions,
 	logoutMutationOptions,
-	meQueryOptions
+	meQueryOptions,
+	signupMutationOptions
 } from './auth';
 
 /** Call from a component `<script>` (needs QueryClient context). */
@@ -16,6 +17,17 @@ export function createLoginMutation() {
 	const queryClient = useQueryClient();
 	return createMutation(() => ({
 		...loginMutationOptions(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: authKeys.me() });
+		}
+	}));
+}
+
+/** Call from a component `<script>` (needs QueryClient context). */
+export function createSignupMutation() {
+	const queryClient = useQueryClient();
+	return createMutation(() => ({
+		...signupMutationOptions(),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: authKeys.me() });
 		}
