@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from litestar import Controller, get, post
+from litestar import Controller, Request, get, post
 from litestar.exceptions import ClientException, HTTPException, NotFoundException
 from litestar.response import ServerSentEvent
 from litestar.response.sse import ServerSentEventMessage
 from litestar.status_codes import HTTP_201_CREATED, HTTP_503_SERVICE_UNAVAILABLE
 from pydantic import TypeAdapter
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import inspect as sa_inspect, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from app.ai import CourseGenerator
@@ -31,11 +33,21 @@ from app.course_schemas import (
     PrimaryLanguage as PrimaryLanguageSchema,
     PromptSuggestionsResponse,
 )
+from app.db import session_scope
 from app.extract import build_llm_context
 from app.images import resolve_image_blocks
 from app.models import Chapter, ChapterStatus, ComplexityLevel, Course, PrimaryLanguage, UploadedFile
 
+log = logging.getLogger(__name__)
+
 ContentBlockAdapter: TypeAdapter[Any] = TypeAdapter(ContentBlock)
+
+
+def _chapters_if_loaded(course: Course) -> list[Chapter]:
+    # Async session: never implicit-load relationships from sync code (MissingGreenlet).
+    if "chapters" in sa_inspect(course).unloaded:
+        return []
+    return list(course.chapters)
 
 
 def _to_course_read(course: Course) -> CourseRead:
@@ -53,7 +65,7 @@ def _to_course_read(course: Course) -> CourseRead:
                 description=ch.description,
                 status=ChapterStatusSchema(ch.status.value),
             )
-            for ch in sorted(course.chapters, key=lambda c: c.index)
+            for ch in sorted(_chapters_if_loaded(course), key=lambda c: c.index)
         ],
     )
 
@@ -93,6 +105,41 @@ def _source_context(course: Course) -> str:
     )
 
 
+async def _fill_chapter_list(
+    session_factory: async_sessionmaker[AsyncSession],
+    course_generator: CourseGenerator,
+    course_id: UUID,
+    data: CreateCourseRequest,
+    source_context: str,
+) -> None:
+    """Background outline fill. Empty `chapters` means still generating (or failed)."""
+    try:
+        generated = await course_generator.generate_chapter_list(
+            data, source_context=source_context
+        )
+        async with session_scope(session_factory) as session:
+            result = await session.execute(
+                select(Course)
+                .where(Course.id == course_id)
+                .options(selectinload(Course.chapters))
+            )
+            course = result.scalar_one_or_none()
+            if course is None or course.chapters:
+                return
+            course.chapters = [
+                Chapter(
+                    index=i,
+                    title=item.title.strip(),
+                    description=item.description.strip(),
+                    status=ChapterStatus.NOT_GENERATED,
+                    edit_history=[],
+                )
+                for i, item in enumerate(generated.chapters)
+            ]
+    except Exception:
+        log.exception("Chapter list generation failed for course %s", course_id)
+
+
 async def _generate_blocks(
     course: Course,
     chapter: Chapter,
@@ -122,12 +169,21 @@ class CoursesController(Controller):
     ) -> PromptSuggestionsResponse:
         return PromptSuggestionsResponse(suggestions=CourseGenerator.suggestions(language=language))
 
+    @get("/")
+    async def list_courses(self, db_session: AsyncSession) -> list[CourseRead]:
+        result = await db_session.execute(
+            select(Course)
+            .options(selectinload(Course.chapters))
+            .order_by(Course.created_at.desc())
+        )
+        return [_to_course_read(c) for c in result.scalars().all()]
+
     @post("/", status_code=HTTP_201_CREATED)
     async def create_course(
         self,
         data: CreateCourseRequest,
         db_session: AsyncSession,
-        course_generator: CourseGenerator,
+        request: Request[Any, Any, Any],
     ) -> CourseRead:
         settings = get_settings()
         source_context = ""
@@ -146,40 +202,30 @@ class CoursesController(Controller):
                 max_chars=settings.upload_context_max_chars,
             )
 
-        try:
-            generated = await course_generator.generate_chapter_list(
-                data,
-                source_context=source_context,
-            )
-        except Exception as exc:
-            raise HTTPException(
-                status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Chapter list generation failed: {exc}",
-            ) from exc
-
         course = Course(
             topic=data.topic.strip(),
             level=ComplexityLevel(data.level.value),
             language=PrimaryLanguage(data.language.value),
-            chapters=[
-                Chapter(
-                    index=i,
-                    title=item.title.strip(),
-                    description=item.description.strip(),
-                    status=ChapterStatus.NOT_GENERATED,
-                    edit_history=[],
-                )
-                for i, item in enumerate(generated.chapters)
-            ],
+            chapters=[],
         )
         db_session.add(course)
         await db_session.flush()
         for row in upload_rows:
             row.course_id = course.id
-        loaded = await db_session.execute(
-            select(Course).where(Course.id == course.id).options(selectinload(Course.chapters))
+        read = _to_course_read(course)
+        await db_session.commit()
+
+        # ponytail: in-process task so POST can return an id to poll. SAQ if the API process shouldn't own LLM work.
+        asyncio.create_task(
+            _fill_chapter_list(
+                request.app.state["session_factory"],
+                request.app.state["course_generator"],
+                course.id,
+                data,
+                source_context,
+            )
         )
-        return _to_course_read(loaded.scalar_one())
+        return read
 
     @get("/{course_id:uuid}")
     async def get_course(self, course_id: UUID, db_session: AsyncSession) -> CourseRead:

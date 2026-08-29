@@ -4,7 +4,9 @@
 	import IconFileText from '~icons/lucide/file-text';
 	import IconUpload from '~icons/lucide/upload';
 	import IconX from '~icons/lucide/x';
-	import { createCourse, EXAMPLE_PROMPTS, LANGUAGES, LEVELS } from '$lib/courses.svelte';
+	import { getApiErrorMessage } from '$lib/api/client';
+	import { createCourseMutation } from '$lib/api/queries.svelte';
+	import { EXAMPLE_PROMPTS, LANGUAGES, LEVELS } from '$lib/courses.svelte';
 	import { ACCEPT, isAllowedUpload, kindOf, MAX_FILE_BYTES, MAX_FILES, prettySize } from '$lib/files';
 	import type { Language, Level } from '$lib/types';
 
@@ -17,8 +19,9 @@
 	let picker = $state<HTMLInputElement | undefined>();
 	let attachments = $state<Attachment[]>([]);
 	let skipNote = $state('');
+	const create = createCourseMutation();
 
-	const canSend = $derived(topic.trim().length > 0);
+	const canSend = $derived(topic.trim().length > 0 && !create.isPending);
 
 	function autosize(el: HTMLTextAreaElement) {
 		el.style.height = 'auto';
@@ -34,15 +37,21 @@
 
 	function submit() {
 		if (!canSend) return;
-		// ponytail: files stay client-side until the course API accepts uploads.
-		createCourse({ topic, level, language });
-		topic = '';
-		skipNote = '';
-		clearAttachments();
-		if (field) {
-			field.style.height = 'auto';
-			field.focus();
-		}
+		const files = attachments.map((a) => a.file);
+		create.mutate(
+			{ topic, level, language, files },
+			{
+				onSuccess: () => {
+					topic = '';
+					skipNote = '';
+					clearAttachments();
+					if (field) {
+						field.style.height = 'auto';
+						field.focus();
+					}
+				}
+			}
+		);
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -53,7 +62,7 @@
 	}
 
 	function usePrompt(text: string) {
-		createCourse({ topic: text, level, language });
+		create.mutate({ topic: text, level, language, files: [] });
 	}
 
 	function addFiles(list: FileList | File[] | null) {
@@ -143,6 +152,10 @@
 			<p class="attach-note">{skipNote}</p>
 		{/if}
 
+		{#if create.error}
+			<p class="auth-error" role="alert">{getApiErrorMessage(create.error)}</p>
+		{/if}
+
 		<div class="composer-top">
 			<textarea
 				bind:this={field}
@@ -213,7 +226,7 @@
 
 		<div class="prompts">
 			{#each EXAMPLE_PROMPTS as prompt, i}
-				<button type="button" class="prompt c{i % 4}" onclick={() => usePrompt(prompt)}>
+				<button type="button" class="prompt c{i % 4}" disabled={create.isPending} onclick={() => usePrompt(prompt)}>
 					<i></i>
 					{prompt}
 				</button>

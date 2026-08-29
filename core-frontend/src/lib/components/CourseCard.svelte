@@ -3,7 +3,9 @@
 	import IconChevronRight from '~icons/lucide/chevron-right';
 	import IconDownload from '~icons/lucide/download';
 	import IconTrash from '~icons/lucide/trash-2';
-	import { deleteCourse, exportCourse, levelLabel } from '$lib/courses.svelte';
+	import { useQueryClient } from '@tanstack/svelte-query';
+	import { dropCourseQueries } from '$lib/api/queries.svelte';
+	import { exportCourse, levelLabel } from '$lib/courses.svelte';
 	import type { Course } from '$lib/types';
 
 	const PREVIEW = 3;
@@ -18,15 +20,17 @@
 		ondelete?: () => void;
 	} = $props();
 
+	const queryClient = useQueryClient();
 	let expanded = $state(false);
 	const extra = $derived(Math.max(0, course.chapters.length - PREVIEW));
 	const chapters = $derived(
 		preview && !expanded ? course.chapters.slice(0, PREVIEW) : course.chapters
 	);
+	const generating = $derived(course.status === 'generating' || course.chapters.length === 0);
 
 	function remove() {
 		if (!confirm(`Delete “${course.topic}”?`)) return;
-		deleteCourse(course.id);
+		dropCourseQueries(queryClient, course.id);
 		ondelete?.();
 	}
 </script>
@@ -34,7 +38,7 @@
 <article class="card">
 	<div class="card-head">
 		<h2 class="card-title">
-			{#if course.status === 'ready'}
+			{#if !generating}
 				<a href="/course/{course.id}">{course.topic}</a>
 			{:else}
 				{course.topic}
@@ -42,7 +46,7 @@
 		</h2>
 		<div class="card-meta">
 			<span class="badge {course.level}">{levelLabel(course.level)}</span>
-			{#if !preview && course.status === 'ready'}
+			{#if !preview && !generating}
 				<button class="icon-btn" type="button" aria-label="Export course" onclick={() => exportCourse(course.id)}>
 					<IconDownload width="16" height="16" />
 				</button>
@@ -53,7 +57,7 @@
 		</div>
 	</div>
 
-	{#if course.status === 'generating'}
+	{#if generating}
 		<div class="loading-row">
 			<span class="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
 			Generating chapters…

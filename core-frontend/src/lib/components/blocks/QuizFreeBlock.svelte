@@ -1,6 +1,8 @@
 <script lang="ts">
 	import IconArrowUp from '~icons/lucide/arrow-up';
-	import { gradeFreeAnswer, type QuizGrade } from '$lib/quiz';
+	import { getApiErrorMessage } from '$lib/api/client';
+	import { postQuizEvaluate } from '$lib/api/courses';
+	import type { QuizGrade } from '$lib/quiz';
 	import type { QuizFreeBlock } from '$lib/types';
 
 	let { block }: { block: QuizFreeBlock } = $props();
@@ -9,20 +11,23 @@
 	let pending = $state(false);
 	let result = $state<QuizGrade | null>(null);
 
-	function submit() {
+	async function submit() {
 		const text = answer.trim();
 		if (!text || pending) return;
 		pending = true;
 		result = null;
-		// ponytail: fake latency until POST /quiz/evaluate exists.
-		window.setTimeout(() => {
-			result = gradeFreeAnswer({
-				user_answer: text,
+		try {
+			result = await postQuizEvaluate({
+				question: block.question,
 				sample_answer: block.sample_answer,
-				grading_rubric: block.grading_rubric
+				grading_rubric: block.grading_rubric,
+				user_answer: text
 			});
+		} catch (err) {
+			result = { verdict: 'incorrect', feedback: getApiErrorMessage(err) };
+		} finally {
 			pending = false;
-		}, 500);
+		}
 	}
 </script>
 
