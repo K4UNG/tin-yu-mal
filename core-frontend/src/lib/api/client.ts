@@ -1,21 +1,26 @@
-import axios, { type AxiosError } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { env } from '$env/dynamic/public';
 import { clearAccessToken, getAccessToken } from './token.svelte';
 
-export const api = axios.create({
-	baseURL: env.PUBLIC_API_URL ?? 'http://localhost:8000',
-	headers: { 'Content-Type': 'application/json' }
+/** Use this for API calls. JWT is attached automatically when the user is logged in. */
+export const axiosInstance = axios.create({
+	baseURL: env.PUBLIC_API_URL ?? 'http://localhost:8000'
 });
 
-api.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 	const token = getAccessToken();
 	if (token) {
-		config.headers.set('Authorization', `Bearer ${token}`);
+		config.headers.Authorization = `Bearer ${token}`;
+	}
+	if (config.data instanceof FormData) {
+		delete config.headers['Content-Type'];
+	} else {
+		config.headers['Content-Type'] = 'application/json';
 	}
 	return config;
 });
 
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
 	(response) => response,
 	(error: AxiosError) => {
 		if (isUnauthorized(error) && !isPublicAuthRequest(error)) {
@@ -24,6 +29,8 @@ api.interceptors.response.use(
 		return Promise.reject(error);
 	}
 );
+
+export const api = axiosInstance;
 
 export function isUnauthorized(error: unknown): boolean {
 	return axios.isAxiosError(error) && error.response?.status === 401;

@@ -1,9 +1,9 @@
 import { browser } from '$app/environment';
 import { mutationOptions, queryOptions } from '@tanstack/svelte-query';
-import { api } from './client';
+import { axiosInstance } from './client';
 import { clearAccessToken, getAccessToken, setAccessToken } from './token.svelte';
 
-export { api, getApiErrorMessage, isUnauthorized } from './client';
+export { api, axiosInstance, getApiErrorMessage, isUnauthorized } from './client';
 export { getAccessToken, isLoggedIn } from './token.svelte';
 
 export type LoginRequest = {
@@ -35,19 +35,19 @@ export const authKeys = {
 };
 
 export async function login(body: LoginRequest): Promise<TokenResponse> {
-	const { data } = await api.post<TokenResponse>('/auth/login', body);
+	const { data } = await axiosInstance.post<TokenResponse>('/auth/login', body);
 	setAccessToken(data.access_token);
 	return data;
 }
 
 export async function signup(body: SignupRequest): Promise<TokenResponse> {
-	const { data } = await api.post<TokenResponse>('/auth/signup', body);
+	const { data } = await axiosInstance.post<TokenResponse>('/auth/signup', body);
 	setAccessToken(data.access_token);
 	return data;
 }
 
 export async function getMe(): Promise<User> {
-	const { data } = await api.get<User>('/auth/me');
+	const { data } = await axiosInstance.get<User>('/auth/me');
 	return data;
 }
 

@@ -3,6 +3,7 @@ from litestar import Router
 from app.routes.auth import AuthController
 from app.routes.courses import CoursesController
 from app.routes.health import HealthController
+from app.routes.quiz import QuizController
 from app.routes.tasks import TasksController
 from app.routes.uploads import UploadsController
 
@@ -14,5 +15,6 @@ api_router = Router(
         TasksController,
         CoursesController,
         UploadsController,
+        QuizController,
     ],
 )

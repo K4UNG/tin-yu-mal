@@ -161,6 +161,28 @@ class ChapterRead(BaseModel):
     edit_history: list[EditHistoryEntry] = Field(default_factory=list)
 
 
+class GeneratedChapterContent(BaseModel):
+    """LLM output for chapter body — server resolves image URLs after."""
+
+    blocks: list[ContentBlock] = Field(min_length=3, max_length=24)
+
+
+class ChapterEditRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=2000)
+
+
+class QuizEvaluateRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=4000)
+    sample_answer: str = Field(min_length=1, max_length=4000)
+    grading_rubric: str = Field(min_length=1, max_length=4000)
+    user_answer: str = Field(min_length=1, max_length=8000)
+
+
+class QuizEvaluateResponse(BaseModel):
+    verdict: Literal["correct", "partial", "incorrect"]
+    feedback: str
+
+
 class PromptSuggestion(BaseModel):
     label: str
     topic: str
