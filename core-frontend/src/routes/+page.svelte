@@ -22,7 +22,7 @@
 	{:else}
 		<div class="feed">
 			{#each catalog.courses as course (course.id)}
-				<CourseCard {course} />
+				<CourseCard {course} preview />
 			{/each}
 		</div>
 	{/if}

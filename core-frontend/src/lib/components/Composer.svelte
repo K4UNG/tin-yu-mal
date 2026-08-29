@@ -53,13 +53,7 @@
 	}
 
 	function usePrompt(text: string) {
-		topic = text;
-		queueMicrotask(() => {
-			if (field) {
-				autosize(field);
-				field.focus();
-			}
-		});
+		createCourse({ topic: text, level, language });
 	}
 
 	function addFiles(list: FileList | File[] | null) {
