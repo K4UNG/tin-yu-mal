@@ -74,11 +74,25 @@ class CourseGenerator:
         except ValidationError:
             return schema.model_validate(json.loads(raw))
 
-    async def generate_chapter_list(self, request: CreateCourseRequest) -> GeneratedChapterList:
+    async def generate_chapter_list(
+        self,
+        request: CreateCourseRequest,
+        *,
+        source_context: str = "",
+    ) -> GeneratedChapterList:
         rules = LEVEL_RULES[request.level]
         chapter_count = int(rules["module_count"])
         lang = LANGUAGE_LABELS[request.language]
         schema_hint = json.dumps(GeneratedChapterList.model_json_schema(), indent=2)
+
+        context_block = ""
+        if source_context.strip():
+            context_block = f"""
+User-provided source material (use to ground chapter topics; do not copy verbatim):
+---
+{source_context.strip()}
+---
+"""
 
         prompt = f"""\
 You are the course architect for tin-yu-mal, an AI learning app.
@@ -91,11 +105,13 @@ Rules:
 - Chapters must form a clear learning path: foundations → core idea → practice → synthesis.
 - Each description is exactly one sentence.
 - Do not include ids, indexes, or status fields — only title and description.
+- If source material is provided, align chapters with that material where relevant.
 
 Return ONLY valid JSON matching this schema (no commentary):
 {schema_hint}
 
 Topic: {request.topic.strip()!r}
+{context_block}
 """
         return await self._prompt_model(prompt, GeneratedChapterList)
 

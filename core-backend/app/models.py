@@ -65,6 +65,10 @@ class Course(Base):
         order_by="Chapter.index",
         lazy="selectin",
     )
+    files: Mapped[list[UploadedFile]] = relationship(
+        back_populates="course",
+        lazy="selectin",
+    )
 
 
 class Chapter(Base):
@@ -86,3 +90,28 @@ class Chapter(Base):
     edit_history: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
 
     course: Mapped[Course] = relationship(back_populates="chapters")
+
+
+class UploadedFile(Base):
+    """User-uploaded material stored in MinIO and optionally linked to a course."""
+
+    __tablename__ = "uploaded_files"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    object_key: Mapped[str] = mapped_column(String(512), unique=True)
+    filename: Mapped[str] = mapped_column(String(512))
+    content_type: Mapped[str] = mapped_column(String(255), default="application/octet-stream")
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    course_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("courses.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )
+
+    course: Mapped[Course | None] = relationship(back_populates="files")

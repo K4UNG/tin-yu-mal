@@ -17,12 +17,35 @@ services:
 
   redis:
     image: redis:7-alpine
-    # ponytail: no host port — api/worker reach it on the compose network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  # Create default bucket once MinIO is up (idempotent).
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minio minio12345; do sleep 1; done;
+      mc mb --ignore-existing local/tin-yu-mal;
+      exit 0;
+      "
 
   api:
     build: .
@@ -32,6 +55,11 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/app
       REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio12345
+      MINIO_BUCKET: tin-yu-mal
+      MINIO_SECURE: "false"
     ports:
       - "8000:8000"
     volumes:
@@ -41,6 +69,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
 
   worker:
     build: .
@@ -50,6 +82,11 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/app
       REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio12345
+      MINIO_BUCKET: tin-yu-mal
+      MINIO_SECURE: "false"
     volumes:
       - ./app:/app/app
     depends_on:
@@ -62,3 +99,4 @@ services:
 
 volumes:
   postgres_data:
+  minio_data:

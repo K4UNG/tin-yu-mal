@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
+import asyncio
 
 from cursor_sdk import AsyncClient
 from litestar import Litestar, Request
@@ -18,9 +19,10 @@ from app.ai import CourseGenerator
 from app.auth import jwt_auth
 from app.config import Settings, get_settings
 from app.db import Base, create_engine, create_session_factory
-from app.models import Chapter, Course, User  # noqa: F401 — register metadata for create_all
+from app.models import Chapter, Course, UploadedFile, User  # noqa: F401 — register metadata
 from app.routes import api_router
 from app.security import hash_password
+from app.storage import ensure_bucket
 from app.tasks import sample_task
 
 
@@ -66,6 +68,8 @@ async def lifespan(app: Litestar) -> AsyncGenerator[None, None]:
 
     async with session_factory() as session:
         await bootstrap_admin(session, settings)
+
+    await asyncio.to_thread(ensure_bucket, settings)
 
     # Cursor local bridge stays open for the app lifetime (required for AsyncAgent).
     async with await AsyncClient.launch_bridge(workspace=settings.cursor_workspace) as client:

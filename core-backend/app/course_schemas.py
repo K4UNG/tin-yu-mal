@@ -59,6 +59,19 @@ class CreateCourseRequest(BaseModel):
     topic: str = Field(min_length=3, max_length=500)
     level: ComplexityLevel = ComplexityLevel.BEGINNER
     language: PrimaryLanguage = PrimaryLanguage.ENGLISH
+    file_ids: list[UUID] = Field(
+        default_factory=list,
+        description="Optional uploaded file IDs to ground chapter generation",
+    )
+
+
+class UploadedFileRead(BaseModel):
+    id: UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+    has_text: bool
+    created_at: datetime
 
 
 class ChapterSummary(BaseModel):
