@@ -11,8 +11,9 @@ from app.config import Settings, get_settings
 
 
 @lru_cache
-def get_minio_client(settings: Settings | None = None) -> Minio:
-    settings = settings or get_settings()
+def get_minio_client() -> Minio:
+    # ponytail: no Settings arg — pydantic models aren't hashable for lru_cache
+    settings = get_settings()
     return Minio(
         settings.minio_endpoint,
         access_key=settings.minio_access_key,
@@ -23,7 +24,7 @@ def get_minio_client(settings: Settings | None = None) -> Minio:
 
 def ensure_bucket(settings: Settings | None = None) -> None:
     settings = settings or get_settings()
-    client = get_minio_client(settings)
+    client = get_minio_client()
     if not client.bucket_exists(settings.minio_bucket):
         client.make_bucket(settings.minio_bucket)
 
@@ -37,7 +38,7 @@ def put_bytes(
 ) -> str:
     """Upload bytes to MinIO; returns object key."""
     settings = settings or get_settings()
-    client = get_minio_client(settings)
+    client = get_minio_client()
     ensure_bucket(settings)
     key = f"uploads/{uuid4()}/{filename}"
     client.put_object(
@@ -52,7 +53,7 @@ def put_bytes(
 
 def get_bytes(object_key: str, settings: Settings | None = None) -> bytes:
     settings = settings or get_settings()
-    client = get_minio_client(settings)
+    client = get_minio_client()
     try:
         response = client.get_object(settings.minio_bucket, object_key)
         try:
