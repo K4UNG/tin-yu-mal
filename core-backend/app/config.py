@@ -26,6 +26,15 @@ class Settings(BaseSettings):
     cursor_model: str = "composer-2.5"
     cursor_workspace: str = "/tmp/tin-yu-mal-cursor"
 
+    # MinIO (S3-compatible uploads)
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minio"
+    minio_secret_key: SecretStr = Field(default=SecretStr("minio12345"))
+    minio_bucket: str = "tin-yu-mal"
+    minio_secure: bool = False
+    upload_max_bytes: int = 10 * 1024 * 1024  # 10 MiB
+    upload_context_max_chars: int = 12_000  # truncate text fed into LLM prompts
+
 
 @lru_cache
 def get_settings() -> Settings:

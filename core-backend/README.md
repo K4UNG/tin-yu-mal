@@ -66,11 +66,24 @@ uvicorn app.main:app --reload
 
 `GET /courses/{course_id}`
 
-### Quick prompts
+### Uploads (MinIO)
 
-`GET /courses/suggestions?language=en|my`
+`POST /uploads` — multipart field `file` → `{ id, filename, content_type, size_bytes, has_text, created_at }`
 
-Chapter content generate / edit / quiz evaluate — next.
+`GET /uploads/{file_id}`
+
+Then create a course with those files:
+
+```json
+{
+  "topic": "How neural networks work",
+  "level": "beginner",
+  "language": "en",
+  "file_ids": ["<upload-uuid>"]
+}
+```
+
+Extracted text (txt/md/json/pdf) is truncated and injected into the chapter-list prompt. MinIO console: http://localhost:9001 (`minio` / `minio12345`).
 
 ## Auth (future-facing)
 

@@ -19,7 +19,9 @@ from app.course_schemas import (
     PrimaryLanguage as PrimaryLanguageSchema,
     PromptSuggestionsResponse,
 )
-from app.models import Chapter, ChapterStatus, ComplexityLevel, Course, PrimaryLanguage
+from app.extract import build_llm_context
+from app.config import get_settings
+from app.models import Chapter, ChapterStatus, ComplexityLevel, Course, PrimaryLanguage, UploadedFile
 
 
 def _to_course_read(course: Course) -> CourseRead:
@@ -61,8 +63,28 @@ class CoursesController(Controller):
         course_generator: CourseGenerator,
     ) -> CourseRead:
         """Generate chapter list and persist course (SPECS §7 POST /courses)."""
+        settings = get_settings()
+        source_context = ""
+        upload_rows: list[UploadedFile] = []
+        if data.file_ids:
+            result = await db_session.execute(
+                select(UploadedFile).where(UploadedFile.id.in_(data.file_ids))
+            )
+            upload_rows = list(result.scalars().all())
+            found = {row.id for row in upload_rows}
+            missing = [str(fid) for fid in data.file_ids if fid not in found]
+            if missing:
+                raise NotFoundException(detail=f"Unknown file_ids: {', '.join(missing)}")
+            source_context = build_llm_context(
+                [(row.filename, row.extracted_text) for row in upload_rows],
+                max_chars=settings.upload_context_max_chars,
+            )
+
         try:
-            generated = await course_generator.generate_chapter_list(data)
+            generated = await course_generator.generate_chapter_list(
+                data,
+                source_context=source_context,
+            )
         except Exception as exc:
             raise HTTPException(
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,
@@ -86,6 +108,8 @@ class CoursesController(Controller):
         )
         db_session.add(course)
         await db_session.flush()
+        for row in upload_rows:
+            row.course_id = course.id
         loaded = await db_session.execute(
             select(Course).where(Course.id == course.id).options(selectinload(Course.chapters))
         )
