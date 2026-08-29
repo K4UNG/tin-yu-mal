@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IconArrowLeft from '~icons/lucide/arrow-left';
 	import { page } from '$app/state';
 	import CourseCard from '$lib/components/CourseCard.svelte';
 	import { getCourse } from '$lib/courses.svelte';
@@ -11,7 +12,7 @@
 </svelte:head>
 
 <div class="page">
-	<a class="back" href="/">← Home</a>
+	<a class="back" href="/"><IconArrowLeft width="16" height="16" /> Home</a>
 	{#if course}
 		<CourseCard {course} />
 	{:else}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IconArrowLeft from '~icons/lucide/arrow-left';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { getChapter, getCourse, levelLabel, markChapterGenerating } from '$lib/courses.svelte';
@@ -22,7 +23,7 @@
 
 <div class="page">
 	{#if course && chapter}
-		<a class="back" href="/course/{course.id}">← {course.topic}</a>
+		<a class="back" href="/course/{course.id}"><IconArrowLeft width="16" height="16" /> {course.topic}</a>
 		<article class="card article">
 			<div class="article-meta">
 				<span class="badge {course.level}">{levelLabel(course.level)}</span>
@@ -67,7 +68,7 @@
 			{/if}
 		</article>
 	{:else}
-		<a class="back" href="/">← Home</a>
+		<a class="back" href="/"><IconArrowLeft width="16" height="16" /> Home</a>
 		<div class="missing">
 			<p>This chapter isn’t on this device anymore.</p>
 			<p class="muted">Generate the course again from the home screen.</p>

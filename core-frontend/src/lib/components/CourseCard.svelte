@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IconChevronRight from '~icons/lucide/chevron-right';
 	import { levelLabel } from '$lib/courses.svelte';
 	import type { Course } from '$lib/types';
 
@@ -33,7 +34,7 @@
 						<strong>{chapter.title}</strong>
 						<span>{chapter.description}</span>
 					</span>
-					<span class="chapter-go" aria-hidden="true">›</span>
+					<span class="chapter-go" aria-hidden="true"><IconChevronRight width="16" height="16" /></span>
 				</a>
 			{/each}
 		</div>
