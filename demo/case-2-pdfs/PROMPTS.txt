@@ -1,0 +1,17 @@
+CASE 2 — PDFs + prompt
+Attach: grade5-science-water-cycle.pdf, grade6-science-photosynthesis.pdf, grade7-history-bagan.pdf
+
+--- A: Burmese course ---
+Level: Beginner
+Language: Burmese
+
+ဒီပြဋ္ဌာန်းစာအုပ်နမူနာ သုံးဖိုင်ကို အခြေခံပြီး beginner သင်တန်းတစ်ခု လုပ်ပါ။ ရေသံသရာ၊ အပင်များ အစာချက်လုပ်ခြင်း၊ ပုဂံခေတ် ဆိုတဲ့ သုံးပိုင်းကို ဆက်စပ်အောင် သင်ပါ။ စာအုပ်ထဲက အဓိက စကားလုံးနဲ့ လေ့ကျင့်ခန်းတွေကို သုံးပြီး quiz / flashcard ထည့်ပါ။ စာအုပ်ကို စာလုံးတိုင်း မကူးပါနဲ့ — ရှင်းပြချက်အသစ် ရေးပါ။
+
+--- B: English course from Myanmar PDFs ---
+Level: Intermediate
+Language: English
+
+Turn these three Myanmar sample textbook chapters into an intermediate course in English. Ground every chapter in the uploaded lessons: the water cycle, photosynthesis, and the Bagan period (Anawrahta, Kyansittha, Alaungsithu, 1287). Use the practice questions as quiz seeds. Do not paste the PDFs verbatim — teach from them.
+
+--- edit ---
+Add one Myanmar-specific example (monsoon rice farming for water cycle, or Bagan temples as heritage) and a flashcard set for the key terms in both Burmese and English.
