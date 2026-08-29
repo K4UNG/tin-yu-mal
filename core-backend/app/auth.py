@@ -33,7 +33,7 @@ def create_jwt_auth() -> JWTAuth[User]:
         retrieve_user_handler=retrieve_user_handler,
         token_secret=settings.secret_key.get_secret_value(),
         default_token_expiration=timedelta(seconds=settings.jwt_expiration_seconds),
-        exclude=["/health", "/auth/login", "/schema"],
+        exclude=["/health", "/auth/login", "/schema", "/courses"],
     )
 
 

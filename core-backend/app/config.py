@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://localhost:5173"])
     jwt_expiration_seconds: int = 60 * 60 * 24
 
+    # Cursor SDK (course generation)
+    cursor_api_key: SecretStr | None = None
+    cursor_model: str = "composer-2.5"
+    cursor_workspace: str = "/tmp/tin-yu-mal-cursor"
+
 
 @lru_cache
 def get_settings() -> Settings:
