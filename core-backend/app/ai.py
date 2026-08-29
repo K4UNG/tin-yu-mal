@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import TypeVar
 
-from cursor_sdk import AgentOptions, AsyncAgent, AsyncClient, LocalAgentOptions
+from cursor_sdk import (
+    AgentOptions,
+    AsyncAgent,
+    AsyncClient,
+    LocalAgentOptions,
+    ModelParameterValue,
+    ModelSelection,
+)
 from pydantic import BaseModel, ValidationError
 
 from app.config import Settings
@@ -28,6 +36,8 @@ LANGUAGE_LABELS = {
     PrimaryLanguage.BURMESE: "Burmese (မြန်မာ)",
 }
 
+log = logging.getLogger(__name__)
+
 DEMO_SUGGESTIONS = [
     PromptSuggestion(label="How neural networks work", topic="How neural networks work"),
     PromptSuggestion(label="How a car engine works", topic="How a four-stroke car engine works"),
@@ -37,18 +47,64 @@ DEMO_SUGGESTIONS = [
 
 T = TypeVar("T", bound=BaseModel)
 _JSON_FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)\s*```", re.IGNORECASE)
+_JSON_RETRY = (
+    "Your previous reply was empty or not valid JSON. "
+    "Reply with ONLY the JSON object from the original schema. "
+    "No markdown fences, no commentary, no tool calls."
+)
 
 
-def _extract_json_object(text: str) -> str:
-    text = text.strip()
+def _extract_json(text: str) -> str:
+    text = (text or "").strip()
     fenced = _JSON_FENCE.search(text)
     if fenced:
-        return fenced.group(1).strip()
-    start = text.find("{")
-    end = text.rfind("}")
+        text = fenced.group(1).strip()
+    obj, arr = text.find("{"), text.find("[")
+    if obj == -1 and arr == -1:
+        return text
+    if arr == -1 or (obj != -1 and obj < arr):
+        start, end = obj, text.rfind("}")
+    else:
+        start, end = arr, text.rfind("]")
     if start >= 0 and end > start:
         return text[start : end + 1]
     return text
+
+
+def _loads_json(blob: str) -> object | None:
+    if not blob or not blob.strip():
+        return None
+    try:
+        return json.loads(blob)
+    except json.JSONDecodeError:
+        try:
+            data, _ = json.JSONDecoder().raw_decode(blob)
+            return data
+        except json.JSONDecodeError:
+            return None
+
+
+def _parse_schema(text: str, schema: type[T]) -> T | None:
+    data = _loads_json(_extract_json(text))
+    if data is None:
+        return None
+    if isinstance(data, list):
+        if "blocks" in schema.model_fields:
+            data = {"blocks": data}
+        elif "chapters" in schema.model_fields:
+            data = {"chapters": data}
+    try:
+        return schema.model_validate(data)
+    except ValidationError:
+        return None
+
+
+assert _extract_json("") == ""
+assert _extract_json('Sure.\n{"blocks": []}') == '{"blocks": []}'
+assert _extract_json("```json\n[1]\n```") == "[1]"
+assert _extract_json('[{ "title": "A" }]') == '[{ "title": "A" }]'
+assert _loads_json("") is None
+assert _loads_json("{") is None
 
 
 class CourseGenerator:
@@ -65,26 +121,56 @@ class CourseGenerator:
             raise RuntimeError("CURSOR_API_KEY is not set")
         # ponytail: webSearch/webFetch only — no shell/edit so the agent can't mutate the host
         tools = ["webSearch", "webFetch"] if with_web and self.settings.cursor_web_tools else []
+        # ponytail: composer-2.5 has no thinking=false; fast=true is the no-extended-reasoning variant.
         return AgentOptions(
             api_key=api_key.get_secret_value(),
-            model=self.settings.cursor_model,
+            model=ModelSelection(
+                id=self.settings.cursor_model,
+                params=[ModelParameterValue(id="fast", value="true")],
+            ),
             tools=tools,
             local=LocalAgentOptions(cwd=self.settings.cursor_workspace),
         )
 
-    async def _prompt_model(self, prompt: str, schema: type[T], *, with_web: bool = False) -> T:
-        result = await AsyncAgent.prompt(
-            prompt,
-            self._agent_options(with_web=with_web),
-            client=self.client,
+    async def _run_text(self, agent: AsyncAgent, prompt: str) -> str:
+        run = await agent.send(prompt)
+        chunks: list[str] = []
+        async for piece in run.iter_text():
+            chunks.append(piece)
+        result = await run.wait()
+        log.info(
+            "cursor run id=%s status=%s duration_ms=%s chars=%s",
+            result.id,
+            result.status,
+            result.duration_ms,
+            len(result.result or "") or sum(len(c) for c in chunks),
         )
         if result.status == "error":
             raise RuntimeError(f"Cursor agent run failed (id={result.id})")
-        raw = _extract_json_object(result.result or "")
+        # ponytail: result.result is empty after some tool-only / thinking turns; stream text is the fallback
+        return (result.result or "").strip() or "".join(chunks).strip()
+
+    async def _prompt_model(self, prompt: str, schema: type[T], *, with_web: bool = False) -> T:
+        options = self._agent_options(with_web=with_web)
+        log.info("cursor prompt with_web=%s tools=%s", with_web, list(options.tools or []))
+        prompt = (
+            prompt
+            + "\n\nYour final message MUST be the JSON object only "
+            "(tool use first is fine; do not end on commentary or an empty message)."
+        )
+        agent = await AsyncAgent.create(options, client=self.client)
         try:
-            return schema.model_validate_json(raw)
-        except ValidationError:
-            return schema.model_validate(json.loads(raw))
+            text = await self._run_text(agent, prompt)
+            parsed = _parse_schema(text, schema)
+            if parsed is None:
+                log.warning("cursor JSON missing or invalid; retrying once")
+                text = await self._run_text(agent, _JSON_RETRY)
+                parsed = _parse_schema(text, schema)
+            if parsed is None:
+                raise RuntimeError("Model returned empty or invalid JSON")
+            return parsed
+        finally:
+            await agent.close()
 
     async def generate_chapter_list(
         self,
