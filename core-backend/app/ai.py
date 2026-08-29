@@ -11,10 +11,8 @@ from pydantic import BaseModel, ValidationError
 from app.config import Settings
 from app.course_schemas import (
     LEVEL_RULES,
-    CourseOutline,
-    ModuleContent,
-    ModuleGenerateRequest,
-    OutlineRequest,
+    CreateCourseRequest,
+    GeneratedChapterList,
     PrimaryLanguage,
     PromptSuggestion,
 )
@@ -48,7 +46,7 @@ def _extract_json_object(text: str) -> str:
 
 
 class CourseGenerator:
-    """MVP course engine via Cursor SDK agents (text-only, JSON in / JSON out)."""
+    """Cursor SDK course generation. Chapter-list first (SPECS §5.1)."""
 
     def __init__(self, settings: Settings, client: AsyncClient) -> None:
         self.settings = settings
@@ -62,7 +60,7 @@ class CourseGenerator:
         return AgentOptions(
             api_key=api_key.get_secret_value(),
             model=self.settings.cursor_model,
-            tools=[],  # ponytail: no repo tools — we only need model text for course JSON
+            tools=[],
             local=LocalAgentOptions(cwd=self.settings.cursor_workspace),
         )
 
@@ -74,73 +72,32 @@ class CourseGenerator:
         try:
             return schema.model_validate_json(raw)
         except ValidationError:
-            # last resort: tolerate slightly messy JSON via loads → validate
             return schema.model_validate(json.loads(raw))
 
-    async def generate_outline(self, request: OutlineRequest) -> CourseOutline:
+    async def generate_chapter_list(self, request: CreateCourseRequest) -> GeneratedChapterList:
         rules = LEVEL_RULES[request.level]
-        module_count = int(rules["module_count"])
+        chapter_count = int(rules["module_count"])
         lang = LANGUAGE_LABELS[request.language]
-        schema_hint = json.dumps(CourseOutline.model_json_schema(), indent=2)
+        schema_hint = json.dumps(GeneratedChapterList.model_json_schema(), indent=2)
 
         prompt = f"""\
 You are the course architect for tin-yu-mal, an AI learning app.
-Generate a course OUTLINE only (no full lesson text).
+Generate a CHAPTER LIST only (titles + one-sentence descriptions). No full lesson content.
 
 Rules:
-- Write all titles and summaries in {lang}.
-- Produce exactly {module_count} chapters (index 1..{module_count}).
+- Write all titles and descriptions in {lang}.
+- Produce exactly {chapter_count} chapters.
 - Complexity level: {request.level.value}. {rules["guidance"]}
 - Chapters must form a clear learning path: foundations → core idea → practice → synthesis.
-- Keep summaries short (1-2 sentences). No markdown outside the JSON.
+- Each description is exactly one sentence.
+- Do not include ids, indexes, or status fields — only title and description.
 
 Return ONLY valid JSON matching this schema (no commentary):
 {schema_hint}
 
-Fill these fields exactly:
-- topic: {request.topic.strip()!r}
-- level: {request.level.value!r}
-- language: {request.language.value!r}
+Topic: {request.topic.strip()!r}
 """
-        outline = await self._prompt_model(prompt, CourseOutline)
-        outline.topic = request.topic.strip()
-        outline.level = request.level
-        outline.language = request.language
-        return outline
-
-    async def generate_module(self, request: ModuleGenerateRequest) -> ModuleContent:
-        rules = LEVEL_RULES[request.level]
-        lang = LANGUAGE_LABELS[request.language]
-        course_bit = f'Course title: "{request.course_title}". ' if request.course_title else ""
-        schema_hint = json.dumps(ModuleContent.model_json_schema(), indent=2)
-
-        prompt = f"""\
-You are the lesson author for tin-yu-mal.
-Generate ONE module as structured JSON for the frontend to render.
-
-Rules:
-- Write ALL text in {lang}.
-- Complexity: {request.level.value}. {rules["guidance"]}
-- Provide 2-5 teaching sections (plain paragraphs, no markdown headings).
-- Include exactly ONE interactive block. Choose the best fit among:
-  - quiz: short free-text answer + expected_answer + optional hint
-  - multiple_choice: 3-4 options + correct_index (0-based)
-  - flashcards: 3-8 front/back cards
-- Do NOT invent other interactive types. Do NOT generate images or code UI.
-- Match the chapter focus; do not cover the whole course.
-
-Return ONLY valid JSON matching this schema (no commentary):
-{schema_hint}
-
-Context:
-{course_bit}Topic: "{request.topic}". Chapter {request.chapter.index}: {request.chapter.title}.
-Chapter goal: {request.chapter.summary}
-Set level={request.level.value!r} and language={request.language.value!r}.
-"""
-        module = await self._prompt_model(prompt, ModuleContent)
-        module.level = request.level
-        module.language = request.language
-        return module
+        return await self._prompt_model(prompt, GeneratedChapterList)
 
     @staticmethod
     def suggestions(*, language: PrimaryLanguage = PrimaryLanguage.ENGLISH) -> list[PromptSuggestion]:
