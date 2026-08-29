@@ -11,10 +11,16 @@ from pydantic import BaseModel, ValidationError
 from app.config import Settings
 from app.course_schemas import (
     LEVEL_RULES,
+    ChapterEditRequest,
+    ComplexityLevel,
+    ContentBlock,
     CreateCourseRequest,
+    GeneratedChapterContent,
     GeneratedChapterList,
     PrimaryLanguage,
     PromptSuggestion,
+    QuizEvaluateRequest,
+    QuizEvaluateResponse,
 )
 
 LANGUAGE_LABELS = {
@@ -46,7 +52,7 @@ def _extract_json_object(text: str) -> str:
 
 
 class CourseGenerator:
-    """Cursor SDK course generation. Chapter-list first (SPECS §5.1)."""
+    """Cursor SDK course generation (chapter list + chapter body + quiz grading)."""
 
     def __init__(self, settings: Settings, client: AsyncClient) -> None:
         self.settings = settings
@@ -114,6 +120,104 @@ Topic: {request.topic.strip()!r}
 {context_block}
 """
         return await self._prompt_model(prompt, GeneratedChapterList)
+
+    async def generate_chapter_content(
+        self,
+        *,
+        topic: str,
+        level: ComplexityLevel,
+        language: PrimaryLanguage,
+        chapter_title: str,
+        chapter_description: str,
+        surrounding_titles: list[str],
+        source_context: str = "",
+    ) -> GeneratedChapterContent:
+        rules = LEVEL_RULES[level]
+        lang = LANGUAGE_LABELS[language]
+        schema_hint = json.dumps(GeneratedChapterContent.model_json_schema(), indent=2)
+        neighbors = ", ".join(surrounding_titles) if surrounding_titles else "(none)"
+
+        context_block = ""
+        if source_context.strip():
+            context_block = f"""
+Source material (ground facts when relevant; do not dump verbatim):
+---
+{source_context.strip()}
+---
+"""
+
+        prompt = f"""\
+You are the lesson author for tin-yu-mal.
+Generate ONE chapter as an ordered array of content blocks for the frontend to render.
+
+Rules:
+- Write ALL learner-facing text in {lang}. JSON keys stay in English.
+- Complexity: {level.value}. {rules["guidance"]}
+- text.markdown MUST be markdown (headings, bold, lists, code where useful).
+- Include typically 1-3 image blocks where a visual helps. For image blocks set prompt+alt; leave url as "".
+- Include at least 2 interactive blocks total from: quiz_mc, quiz_free, flashcards.
+  Beginner: prefer quiz_mc + flashcards. Advanced: prefer quiz_free.
+- Cover ONLY this chapter — do not teach the whole course.
+- Surrounding chapters for continuity: {neighbors}
+
+Return ONLY valid JSON matching this schema (no commentary):
+{schema_hint}
+
+Course topic: {topic!r}
+Chapter title: {chapter_title!r}
+Chapter description: {chapter_description!r}
+{context_block}
+"""
+        return await self._prompt_model(prompt, GeneratedChapterContent)
+
+    async def edit_chapter_content(
+        self,
+        *,
+        blocks: list[ContentBlock],
+        edit: ChapterEditRequest,
+        language: PrimaryLanguage,
+    ) -> GeneratedChapterContent:
+        lang = LANGUAGE_LABELS[language]
+        schema_hint = json.dumps(GeneratedChapterContent.model_json_schema(), indent=2)
+        current = json.dumps(
+            [b.model_dump(mode="json") for b in blocks],
+            ensure_ascii=False,
+            indent=2,
+        )
+
+        prompt = f"""\
+You are editing an existing tin-yu-mal chapter.
+Here is the current chapter content:
+{current}
+
+The user requests this change: {edit.prompt.strip()!r}
+
+Return the FULL revised content in the same JSON schema, applying only the requested change
+and leaving everything else consistent. Keep learner-facing text in {lang}.
+For any new image blocks, leave url as "".
+
+Return ONLY valid JSON matching this schema (no commentary):
+{schema_hint}
+"""
+        return await self._prompt_model(prompt, GeneratedChapterContent)
+
+    async def evaluate_quiz(self, data: QuizEvaluateRequest) -> QuizEvaluateResponse:
+        schema_hint = json.dumps(QuizEvaluateResponse.model_json_schema(), indent=2)
+        prompt = f"""\
+You are a strict but fair quiz grader for tin-yu-mal.
+
+Question: {data.question}
+Sample answer (reference, not shown to learner): {data.sample_answer}
+Grading rubric: {data.grading_rubric}
+Learner answer: {data.user_answer}
+
+Return ONLY JSON matching this schema:
+{schema_hint}
+
+verdict must be exactly one of: correct, partial, incorrect.
+feedback should be short, helpful, and in the same language as the question.
+"""
+        return await self._prompt_model(prompt, QuizEvaluateResponse)
 
     @staticmethod
     def suggestions(*, language: PrimaryLanguage = PrimaryLanguage.ENGLISH) -> list[PromptSuggestion]:

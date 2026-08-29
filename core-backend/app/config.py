@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     upload_max_bytes: int = 10 * 1024 * 1024  # 10 MiB
     upload_context_max_chars: int = 12_000  # truncate text fed into LLM prompts
 
+    # Unsplash (image blocks). If unset, falls back to picsum placeholder URLs.
+    unsplash_access_key: SecretStr | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

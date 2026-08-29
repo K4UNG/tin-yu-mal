@@ -9,7 +9,8 @@ Hackathon MVP: **AI course outline + module content** (Burmese/English) with fix
 | Full adaptive course platform | Topic → outline → one module live |
 | Claude-style freeform artifacts | Fixed types: `quiz`, `multiple_choice`, `flashcards` |
 | Auth, save progress, history | JWT exists but `/courses` is public for the demo |
-| Images / diagrams / simulations | Text sections only; image slot = future |
+| Images / diagrams / simulations | Unsplash (or picsum) fills `image.url` after generation |
+
 
 **Complexity is a depth dial**, not just tone:
 
@@ -65,6 +66,41 @@ uvicorn app.main:app --reload
 ### Get course
 
 `GET /courses/{course_id}`
+
+### Generate chapter content
+
+`POST /courses/{course_id}/chapters/{chapter_id}/generate`
+
+→ `{ id, title, blocks: [...], edit_history }` with `text` / `image` / `quiz_mc` / `quiz_free` / `flashcards`.  
+Image `url` is filled via Unsplash (or picsum fallback). Status: `generating` → `ready`.
+
+SSE (progressive blocks): `POST .../generate?stream=true`  
+Events: `status` → `block` (each) → `complete` (full chapter) / `error`.
+
+`GET /courses/{course_id}/chapters/{chapter_id}` — fetch a ready chapter.
+
+### Edit chapter
+
+`POST /courses/{course_id}/chapters/{chapter_id}/edit`
+
+```json
+{ "prompt": "make the quiz easier and add an analogy about traffic" }
+```
+
+### Quiz free-answer grading
+
+`POST /quiz/evaluate`
+
+```json
+{
+  "question": "...",
+  "sample_answer": "...",
+  "grading_rubric": "...",
+  "user_answer": "..."
+}
+```
+
+→ `{ "verdict": "correct"|"partial"|"incorrect", "feedback": "..." }`
 
 ### Uploads (MinIO)
 
