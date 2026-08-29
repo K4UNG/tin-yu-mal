@@ -1,0 +1,24 @@
+CASE 3 — prompts only (no files)
+
+3a  Level: Beginner   Language: English
+How neural networks work — for someone who has never written code. Use one everyday analogy (a team of people passing notes) and keep math out until the last chapter.
+
+edit: Make this simpler, and add a multiple-choice quiz about layers vs weights.
+
+
+3b  Level: Intermediate   Language: Burmese
+ပုဂံခေတ် နိုင်ငံတော် ဘယ်လို တည်ထောင်ခဲ့လဲ။ အနော်ရထာ၊ ကျန်စစ်သား၊ အလောင်းစည်သူ၊ ပြီးတော့ ၁၂၈၇ မွန်ဂိုကျူးကျော်မှုအထိ။ သမိုင်းကို ဇာတ်လမ်းလို ပြောပါ၊ ခုနှစ်တွေ အလွန်မများအောင်။
+
+edit: ဥပမာကို ကား / ခရီးသွား လူတွေနဲ့ ဆက်စပ်အောင် ထည့်ပါ။ ဒုတိယ ပုံကို ဖယ်ပါ။
+
+
+3c  Level: Advanced   Language: English
+How a compiler turns source code into a running program: lexing, parsing, type checking, IR, and codegen. Assume the reader knows what a function is. Prefer free-response checks over multiple choice.
+
+edit: Add a worked example that compiles the tiny program `print(1+2)` through each stage.
+
+
+spares
+Photosynthesis, simply — as if explaining it to a Grade 6 student in Yangon, including why monsoon clouds still matter for plants.
+How the internet routes a packet from a phone in Mandalay to a server in Singapore.
+ကားအင်ဂျင် (four-stroke) ဘယ်လို အလုပ်လုပ်လဲ။ စက်ပြင်ဆိုင်မှာ ကြားရတဲ့ စကားလုံးတွေနဲ့ ရှင်းပြပါ။

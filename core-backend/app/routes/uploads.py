@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Annotated
 from uuid import UUID
 
@@ -19,6 +21,41 @@ from app.extract import extract_text
 from app.models import UploadedFile
 from app.storage import put_bytes
 
+_ALLOWED_EXT = frozenset({
+    ".txt",
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".bmp",
+})
+_ALLOWED_CT = frozenset({
+    "text/plain",
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/bmp",
+})
+
+
+@dataclass
+class UploadForm:
+    file: UploadFile
+
+
+def _is_allowed(*, filename: str, content_type: str) -> bool:
+    ext = PurePosixPath(filename).suffix.lower()
+    ctype = (content_type or "").split(";", 1)[0].strip().lower()
+    if ext in _ALLOWED_EXT:
+        return True
+    if ctype in _ALLOWED_CT or ctype.startswith("image/"):
+        return True
+    return False
+
 
 class UploadsController(Controller):
     path = "/uploads"
@@ -27,10 +64,18 @@ class UploadsController(Controller):
     @post("/", status_code=HTTP_201_CREATED)
     async def upload_file(
         self,
-        file: Annotated[UploadFile, Body(media_type=RequestEncodingType.MULTI_PART)],
+        data: Annotated[UploadForm, Body(media_type=RequestEncodingType.MULTI_PART)],
         db_session: AsyncSession,
     ) -> UploadedFileRead:
         settings = get_settings()
+        file = data.file
+        filename = file.filename or "upload.bin"
+        content_type = file.content_type or "application/octet-stream"
+        if not _is_allowed(filename=filename, content_type=content_type):
+            raise ClientException(
+                detail="Only .txt, .pdf, and image files (jpg, png, gif, webp, bmp) are allowed"
+            )
+
         raw = await file.read()
         if not raw:
             raise ClientException(detail="Empty file")
@@ -39,8 +84,6 @@ class UploadsController(Controller):
                 detail=f"File exceeds max size of {settings.upload_max_bytes} bytes"
             )
 
-        filename = file.filename or "upload.bin"
-        content_type = file.content_type or "application/octet-stream"
         object_key = await asyncio.to_thread(
             put_bytes,
             data=raw,

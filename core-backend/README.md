@@ -104,7 +104,7 @@ Events: `status` → `block` (each) → `complete` (full chapter) / `error`.
 
 ### Uploads (MinIO)
 
-`POST /uploads` — multipart field `file` → `{ id, filename, content_type, size_bytes, has_text, created_at }`
+`POST /uploads` — multipart field `file` (`.txt`, `.pdf`, or images) → `{ id, filename, content_type, size_bytes, has_text, created_at }`
 
 `GET /uploads/{file_id}`
 

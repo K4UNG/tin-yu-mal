@@ -1,0 +1,13 @@
+CASE 1 — images + prompt
+Level: Beginner
+Language: English
+
+Using these four photos, make a beginner course on everyday Myanmar food. Cover mohinga (the fish-noodle soup), laphet thoke (fermented tea-leaf salad), Shan khauk swe, and how a typical Yangon tea shop works — what you order, how you eat it, and a few cultural notes. Keep recipes doable at home. Include quizzes on ingredients and flashcards for Burmese dish names.
+
+--- Burmese alternative ---
+Language: Burmese
+
+ဒီဓာတ်ပုံ လေးပုံကို အသုံးပြုပြီး မြန်မာ့နေ့စဉ် အစားအစာ beginner သင်တန်းတစ်ခု ဖန်တီးပါ။ မုန့်ဟင်းခါး၊ လက်ဖက်သုပ်၊ ရှမ်းခေါက်ဆွဲ၊ ပြီးတော့ ရန်ကုန် လက်ဖက်ရည်ဆိုင်မှာ ဘာမှာရလဲ / ဘယ်လိုစားလဲ ဆိုတာ ပါပါစေ။ အိမ်မှာ ချက်လို့ရအောင် ရိုးရိုးထားပါ။ ပါဝင်ပစ္စည်း quiz နဲ့ မြန်မာဟင်းအမည် flashcard တွေ ထည့်ပါ။
+
+--- edit ---
+Add a vegetarian or vegan swap for each dish, and make the quiz about ingredients instead of cooking times.
