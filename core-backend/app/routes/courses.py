@@ -8,11 +8,11 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from litestar import Controller, Request, get, post
+from litestar import Controller, Request, delete, get, post
 from litestar.exceptions import ClientException, HTTPException, NotFoundException
 from litestar.response import ServerSentEvent
 from litestar.response.sse import ServerSentEventMessage
-from litestar.status_codes import HTTP_201_CREATED, HTTP_503_SERVICE_UNAVAILABLE
+from litestar.status_codes import HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_503_SERVICE_UNAVAILABLE
 from pydantic import TypeAdapter
 from sqlalchemy import inspect as sa_inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -230,6 +230,13 @@ class CoursesController(Controller):
     @get("/{course_id:uuid}")
     async def get_course(self, course_id: UUID, db_session: AsyncSession) -> CourseRead:
         return _to_course_read(await _load_course(db_session, course_id))
+
+    @delete("/{course_id:uuid}", status_code=HTTP_204_NO_CONTENT)
+    async def delete_course(self, course_id: UUID, db_session: AsyncSession) -> None:
+        course = await _load_course(db_session, course_id)
+        for row in list(course.files):
+            await db_session.delete(row)
+        await db_session.delete(course)
 
     @get("/{course_id:uuid}/chapters/{chapter_id:uuid}")
     async def get_chapter(

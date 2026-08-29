@@ -85,38 +85,3 @@ export function deleteCourse(id: string): void {
 	catalog.chapters = nextChapters;
 	catalog.courses = catalog.courses.filter((c) => c.id !== id);
 }
-
-export function exportCourse(id: string): void {
-	const course = getCourse(id);
-	if (!course) return;
-	const payload = {
-		topic: course.topic,
-		level: course.level,
-		language: course.language,
-		created_at: course.created_at,
-		chapters: course.chapters.map((ch) => ({
-			index: ch.index,
-			title: ch.title,
-			description: ch.description,
-			status: ch.status,
-			content: catalog.chapters[ch.id] ?? null
-		}))
-	};
-	const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = `${slug(course.topic)}.json`;
-	a.click();
-	URL.revokeObjectURL(url);
-}
-
-function slug(topic: string): string {
-	return (
-		topic
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-|-$/g, '')
-			.slice(0, 60) || 'course'
-	);
-}

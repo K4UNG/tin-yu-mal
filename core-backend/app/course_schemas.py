@@ -33,20 +33,20 @@ LEVEL_RULES: dict[ComplexityLevel, dict[str, str | int]] = {
         "module_count": 7,
         "guidance": (
             "More, shorter chapters that build slowly. Simple language, lots of analogies, "
-            "define every term. Prefer guided interactives (quiz_mc, flashcards)."
+            "define every term. Include quiz_mc, quiz_free, and flashcards in every chapter."
         ),
     },
     ComplexityLevel.INTERMEDIATE: {
         "module_count": 5,
         "guidance": (
-            "Balanced depth. Some prior knowledge OK. Mix guided and open-ended interactives."
+            "Balanced depth. Some prior knowledge OK. Include quiz_mc, quiz_free, and flashcards."
         ),
     },
     ComplexityLevel.ADVANCED: {
         "module_count": 4,
         "guidance": (
             "Fewer, denser chapters. Assume prior knowledge, less hand-holding. "
-            "Favor open-ended quiz_free interactives."
+            "Still include quiz_mc, quiz_free, and flashcards; make quiz_free harder."
         ),
     },
 }

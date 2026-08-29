@@ -1,11 +1,10 @@
 <script lang="ts">
 	import IconChevronDown from '~icons/lucide/chevron-down';
 	import IconChevronRight from '~icons/lucide/chevron-right';
-	import IconDownload from '~icons/lucide/download';
 	import IconTrash from '~icons/lucide/trash-2';
-	import { useQueryClient } from '@tanstack/svelte-query';
-	import { dropCourseQueries } from '$lib/api/queries.svelte';
-	import { exportCourse, levelLabel } from '$lib/courses.svelte';
+	import { getApiErrorMessage } from '$lib/api/client';
+	import { createDeleteCourseMutation } from '$lib/api/queries.svelte';
+	import { levelLabel } from '$lib/courses.svelte';
 	import type { Course } from '$lib/types';
 
 	const PREVIEW = 3;
@@ -20,7 +19,7 @@
 		ondelete?: () => void;
 	} = $props();
 
-	const queryClient = useQueryClient();
+	const deleteMut = createDeleteCourseMutation();
 	let expanded = $state(false);
 	const extra = $derived(Math.max(0, course.chapters.length - PREVIEW));
 	const chapters = $derived(
@@ -29,9 +28,12 @@
 	const generating = $derived(course.status === 'generating' || course.chapters.length === 0);
 
 	function remove() {
+		if (deleteMut.isPending) return;
 		if (!confirm(`Delete “${course.topic}”?`)) return;
-		dropCourseQueries(queryClient, course.id);
-		ondelete?.();
+		deleteMut.mutate(course.id, {
+			onSuccess: () => ondelete?.(),
+			onError: (err) => alert(getApiErrorMessage(err))
+		});
 	}
 </script>
 
@@ -46,12 +48,13 @@
 		</h2>
 		<div class="card-meta">
 			<span class="badge {course.level}">{levelLabel(course.level)}</span>
-			{#if !preview && !generating}
-				<button class="icon-btn" type="button" aria-label="Export course" onclick={() => exportCourse(course.id)}>
-					<IconDownload width="16" height="16" />
-				</button>
-			{/if}
-			<button class="icon-btn danger" type="button" aria-label="Delete course" onclick={remove}>
+			<button
+				class="icon-btn danger"
+				type="button"
+				aria-label="Delete course"
+				disabled={deleteMut.isPending}
+				onclick={remove}
+			>
 				<IconTrash width="16" height="16" />
 			</button>
 		</div>

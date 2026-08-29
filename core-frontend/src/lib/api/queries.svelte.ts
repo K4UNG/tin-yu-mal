@@ -3,6 +3,7 @@ import type { QueryClient } from '@tanstack/svelte-query';
 import type { ChapterStatus, Course } from '$lib/types';
 import {
 	deleteCourse,
+	getCourse,
 	replaceCourse,
 	setChapterStatus,
 	upsertCourse
@@ -20,6 +21,7 @@ import {
 	courseQueryOptions,
 	coursesQueryOptions,
 	createCourseMutationOptions,
+	deleteCourseMutationOptions,
 	editChapterMutationOptions,
 	generateChapterMutationOptions,
 	type CreateCourseInput
@@ -114,6 +116,26 @@ export function createCourseMutation() {
 			queryClient.setQueryData<Course[]>(courseKeys.list(), (old) =>
 				(old ?? []).filter((c) => c.id !== ctx.optimisticId)
 			);
+		}
+	}));
+}
+
+export function createDeleteCourseMutation() {
+	const queryClient = useQueryClient();
+	return createMutation(() => ({
+		...deleteCourseMutationOptions(),
+		onMutate: async (courseId: string) => {
+			await queryClient.cancelQueries({ queryKey: courseKeys.all });
+			const snapshot = getCourse(courseId);
+			const list = queryClient.getQueryData<Course[]>(courseKeys.list());
+			const detail = queryClient.getQueryData<Course>(courseKeys.detail(courseId));
+			dropCourseQueries(queryClient, courseId);
+			return { snapshot, list, detail };
+		},
+		onError: (_err, courseId, ctx) => {
+			if (ctx?.snapshot) upsertCourse(ctx.snapshot);
+			if (ctx?.list) queryClient.setQueryData(courseKeys.list(), ctx.list);
+			if (ctx?.detail) queryClient.setQueryData(courseKeys.detail(courseId), ctx.detail);
 		}
 	}));
 }

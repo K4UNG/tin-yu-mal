@@ -110,6 +110,11 @@ export async function fetchCourse(id: string): Promise<Course> {
 	return course;
 }
 
+export async function deleteCourseOnServer(id: string): Promise<void> {
+	if (!isCourseId(id)) return;
+	await axiosInstance.delete(`/courses/${id}`);
+}
+
 export async function fetchChapter(courseId: string, chapterId: string): Promise<Chapter> {
 	const { data } = await axiosInstance.get<Chapter>(
 		`/courses/${courseId}/chapters/${chapterId}`
@@ -188,6 +193,12 @@ export function createCourseMutationOptions() {
 				file_ids
 			});
 		}
+	});
+}
+
+export function deleteCourseMutationOptions() {
+	return mutationOptions({
+		mutationFn: (courseId: string) => deleteCourseOnServer(courseId)
 	});
 }
 
