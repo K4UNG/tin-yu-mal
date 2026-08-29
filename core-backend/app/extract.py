@@ -10,16 +10,21 @@ def extract_text(data: bytes, *, filename: str, content_type: str) -> str | None
     ctype = (content_type or "").lower()
 
     if ctype.startswith("text/") or name.endswith((".txt", ".md", ".markdown", ".csv", ".json")):
-        return _decode_text(data)
+        return _sanitize_text(_decode_text(data))
 
     if ctype == "application/json" or name.endswith(".json"):
-        return _decode_text(data)
+        return _sanitize_text(_decode_text(data))
 
     if ctype == "application/pdf" or name.endswith(".pdf"):
-        return _extract_pdf(data)
+        return _sanitize_text(_extract_pdf(data) or "") or None
 
     # images / binaries: no OCR in MVP
     return None
+
+
+def _sanitize_text(text: str) -> str:
+    # Postgres text/varchar reject NUL; pypdf often leaves \x00 in Myanmar/Indic PDFs
+    return text.replace("\x00", "")
 
 
 def _decode_text(data: bytes) -> str:
